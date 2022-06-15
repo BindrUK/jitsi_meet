@@ -1,21 +1,28 @@
 package com.gunschu.jitsi_meet
 
 import android.app.Activity
+import android.app.Fragment
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.util.Log
 import androidx.annotation.NonNull
-import io.flutter.embedding.engine.plugins.FlutterPlugin
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.gunschu.jitsi_meet.JitsiMeetPlugin.Companion.JITSI_PLUGIN_TAG
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.Registrar
+import org.jitsi.meet.sdk.BroadcastEvent
+import java.net.URL
 import org.jitsi.meet.sdk.JitsiMeetConferenceOptions
 import org.jitsi.meet.sdk.JitsiMeetUserInfo
-import java.net.URL
 
 
 /** JitsiMeetPlugin */
@@ -30,15 +37,64 @@ public class JitsiMeetPlugin() : FlutterPlugin, MethodCallHandler, ActivityAware
     private lateinit var eventChannel: EventChannel
 
     private var activity: Activity? = null
+    private lateinit var pluginBinding: FlutterPlugin.FlutterPluginBinding
 
-    constructor(activity: Activity) : this() {
+    constructor(activity: Activity?) : this() {
         this.activity = activity
     }
 
     /**
      * FlutterPlugin interface implementations
      */
+    private val broadcastReceiver: BroadcastReceiver? = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            onBroadcastReceived(intent)
+        }
+    }
+
+    fun onConferenceWillJoin(data: HashMap<String, Any>) {
+        Log.d(JITSI_PLUGIN_TAG, String.format("JitsiMeetPluginActivity.onConferenceWillJoin: %s", data))
+        JitsiMeetEventStreamHandler.instance.onConferenceWillJoin(data)
+    }
+
+     fun onConferenceJoined(data: HashMap<String, Any>) {
+        Log.d(JITSI_PLUGIN_TAG, String.format("JitsiMeetPluginActivity.onConferenceJoined: %s", data))
+        JitsiMeetEventStreamHandler.instance.onConferenceJoined(data)
+    }
+
+     fun onConferenceTerminated(data: HashMap<String, Any>) {
+
+        Log.d(JITSI_PLUGIN_TAG, String.format("JitsiMeetPluginActivity.onConferenceTerminated: %s", data))
+        JitsiMeetEventStreamHandler.instance.onConferenceTerminated(data)
+    }
+    private fun onBroadcastReceived(intent: Intent?) {
+        if (intent != null) {
+            val event = BroadcastEvent(intent)
+            when (event.type) {
+                BroadcastEvent.Type.CONFERENCE_JOINED -> this.onConferenceJoined(event.data)
+                BroadcastEvent.Type.CONFERENCE_WILL_JOIN -> this.onConferenceWillJoin(event.data)
+                BroadcastEvent.Type.CONFERENCE_TERMINATED -> this.onConferenceTerminated(event.data)
+            }
+        }
+    }
+
+    private fun registerForBroadcastMessages() {
+        val intentFilter = IntentFilter()
+        val var2 = BroadcastEvent.Type.values()
+        val var3 = var2.size
+        for (var4 in 0 until var3) {
+            val type = var2[var4]
+            intentFilter.addAction(type.action)
+        }
+        this.activity?.let { LocalBroadcastManager.getInstance(it.applicationContext).registerReceiver(broadcastReceiver!!, intentFilter) }
+    }
+
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+        Log.d(JITSI_PLUGIN_TAG, "Engine")
+
+        pluginBinding = flutterPluginBinding;
+
+
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, JITSI_METHOD_CHANNEL)
         channel.setMethodCallHandler(this)
 
@@ -63,6 +119,7 @@ public class JitsiMeetPlugin() : FlutterPlugin, MethodCallHandler, ActivityAware
     companion object {
         @JvmStatic
         fun registerWith(registrar: Registrar) {
+            Log.d(JITSI_PLUGIN_TAG, "Register with")
             val plugin = JitsiMeetPlugin(registrar.activity())
             val channel = MethodChannel(registrar.messenger(), JITSI_METHOD_CHANNEL)
             channel.setMethodCallHandler(plugin)
@@ -176,7 +233,13 @@ public class JitsiMeetPlugin() : FlutterPlugin, MethodCallHandler, ActivityAware
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        Log.d(JITSI_PLUGIN_TAG, "Activity")
         this.activity = binding.activity
+
+        pluginBinding
+            .platformViewRegistry
+            .registerViewFactory("jitsi", NativeViewFactory(binding.activity))
+        this.registerForBroadcastMessages()
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
