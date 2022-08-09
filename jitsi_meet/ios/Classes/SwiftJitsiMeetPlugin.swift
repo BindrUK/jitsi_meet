@@ -12,7 +12,7 @@ public class SwiftJitsiMeetPlugin: NSObject, FlutterPlugin, FlutterStreamHandler
     public static func register(with registrar: FlutterPluginRegistrar) {
         
         let factory = JitsiViewFactory(messenger: registrar.messenger())
-        registrar.register(factory, withId: "jitsi_ios_meet_view")
+        registrar.register(factory, withId: "jitsi")
         
         let channel = FlutterMethodChannel(name: "jitsi_meet", binaryMessenger: registrar.messenger())
         let instance = SwiftJitsiMeetPlugin()
