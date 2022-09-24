@@ -74,6 +74,9 @@ public class JitsiMeetPlugin() : FlutterPlugin, MethodCallHandler, ActivityAware
                 BroadcastEvent.Type.CONFERENCE_JOINED -> this.onConferenceJoined(event.data)
                 BroadcastEvent.Type.CONFERENCE_WILL_JOIN -> this.onConferenceWillJoin(event.data)
                 BroadcastEvent.Type.CONFERENCE_TERMINATED -> this.onConferenceTerminated(event.data)
+                else -> {
+                    print("Unsupported event")
+                }
             }
         }
     }
