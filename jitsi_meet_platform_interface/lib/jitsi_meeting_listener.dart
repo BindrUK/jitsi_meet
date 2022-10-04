@@ -4,6 +4,8 @@ class JitsiMeetingListener {
   ///
   final Function(Map<dynamic, dynamic> message)? onConferenceWillJoin;
 
+  final Function(Map<dynamic, dynamic> message)? onChatEvent;
+
   ///
   final Function(Map<dynamic, dynamic> message)? onConferenceJoined;
 
@@ -26,6 +28,7 @@ class JitsiMeetingListener {
   JitsiMeetingListener(
       {this.onConferenceWillJoin,
       this.onConferenceJoined,
+      this.onChatEvent,
       this.onConferenceTerminated,
       this.onPictureInPictureTerminated,
       this.onPictureInPictureWillEnter,
@@ -33,7 +36,7 @@ class JitsiMeetingListener {
       this.genericListeners});
 }
 
-/// Generic listener
+/// Generic listeners
 class JitsiGenericListener {
   final String eventName;
   final Function(dynamic message) callback;
